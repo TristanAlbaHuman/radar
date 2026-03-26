@@ -58,7 +58,7 @@ if data_loaded:
              ((df_m.get("sans_suivi",False)==True) | (df_m.get("age_suivi_j",0)>60))
         ].pipe(len) if not df_m.empty else 0
     )
-    n_chaud = int((df["actif"]==True & df["match_mandat_id"].isna() & df["sans_suivi"]==True).sum())
+    n_chaud = int(((df["actif"]==True) & df["match_mandat_id"].isna() & (df["sans_suivi"]==True)).sum())
 
     st.markdown(banner(
         f"Données chargées — <b>{st.session_state.get('filename','')}</b> · "
