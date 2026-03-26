@@ -48,13 +48,27 @@ TYPE_MAP = {
 
 def _get_api_key() -> Optional[str]:
     """
-    Récupère la clé API depuis st.secrets ou variable d'environnement.
-    Retourne None si non configurée (mode dégradé).
+    Récupère la clé API dans cet ordre de priorité :
+    1. st.session_state["stream_api_key"] (saisie dans la sidebar)
+    2. st.secrets["STREAM_ESTATE_API_KEY"] (Streamlit Cloud Settings)
+    3. Variable d'environnement STREAM_ESTATE_API_KEY
     """
+    # 1. Clé saisie manuellement dans la sidebar
     try:
-        return st.secrets["STREAM_ESTATE_API_KEY"]
+        key = st.session_state.get("stream_api_key", "").strip()
+        if key:
+            return key
     except Exception:
-        return os.environ.get("STREAM_ESTATE_API_KEY")
+        pass
+    # 2. Streamlit Cloud secrets
+    try:
+        key = st.secrets["STREAM_ESTATE_API_KEY"]
+        if key:
+            return key
+    except Exception:
+        pass
+    # 3. Variable d'environnement
+    return os.environ.get("STREAM_ESTATE_API_KEY") or None
 
 
 def _headers() -> dict:
@@ -67,6 +81,38 @@ def _headers() -> dict:
 def _disponible() -> bool:
     """True si la clé API est configurée."""
     return bool(_get_api_key())
+
+
+def widget_configuration_sidebar():
+    """
+    Widget à placer dans la sidebar de chaque page utilisant Stream Estate.
+    Affiche un champ de saisie de clé si non configurée,
+    ou un badge vert si configurée.
+    """
+    st.markdown("---")
+    st.markdown("### 📡 Stream Estate")
+    if _disponible():
+        st.markdown(
+            '<span style="background:#eafaf1;color:#1e8449;padding:3px 10px;'
+            'border-radius:4px;font-size:11px;font-weight:700">✅ API connectée</span>',
+            unsafe_allow_html=True,
+        )
+    else:
+        st.markdown(
+            '<span style="background:#fef0e0;color:#b7600d;padding:3px 10px;'
+            'border-radius:4px;font-size:11px;font-weight:700">⚠️ Clé API requise</span>',
+            unsafe_allow_html=True,
+        )
+        key_input = st.text_input(
+            "Clé API Stream Estate",
+            type="password",
+            key="stream_api_key_input",
+            placeholder="Votre clé X-API-KEY",
+            help="Obtenez votre clé sur stream.estate · Ou configurez STREAM_ESTATE_API_KEY dans Streamlit Cloud Settings > Secrets",
+        )
+        if key_input:
+            st.session_state["stream_api_key"] = key_input
+            st.rerun()
 
 
 # ─────────────────────────────────────────────
