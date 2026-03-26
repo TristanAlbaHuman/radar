@@ -1,0 +1,61 @@
+bloc1_crm:
+  estimation_moins_6m: 5
+  estimation_6_24m: 15
+  estimation_24_48m: 10
+  estimation_plus_48m: 3
+  mandat_exclusif_match: 15
+  mandat_simple_match: 12
+  mandat_comandat_match: 10
+  match_fiable: 3
+  match_probable: 1
+  plafond: 35
+
+bloc2_timing:
+  sans_suivi: 10
+  suivi_moins_3m: 0
+  suivi_3_6m: 3
+  suivi_6_12m: 7
+  suivi_plus_12m: 10
+  mandat_sans_suivi_bonus: 5
+  plafond: 25
+
+bloc3_bien:
+  maison: 8
+  appartement: 6
+  immeuble: 4
+  terrain: 3
+  parking: 1
+  local_commercial: 1
+  autre: 2
+  cp_renseigne: 4
+  adresse_complete: 3
+  plafond: 20
+
+bloc4_contact:
+  telephone_valide: 4
+  email_valide: 2
+  multi_canal: 2
+  telephone_manquant: -2
+  email_manquant: -1
+  plafond: 10
+
+bloc5_ademe:
+  dpe_match_fiable: 3
+  dpe_ancien: 2
+  dpe_fg: 3
+  dpe_e: 2
+  incoherence: 1
+  plafond: 10
+
+priorite:
+  p1_min: 80
+  p2_min: 65
+  p3_min: 50
+  p4_min: 35
+
+confiance:
+  tel_et_email_et_adresse: 5
+  tel_et_email: 4
+  tel_ou_email: 3
+  aucun_canal: 1
+  bonus_match_mandat_n1: 1
