@@ -9,10 +9,11 @@ import pandas as pd
 from datetime import date
 from ui_utils import (
     CSS, S, fmt_date, fmt_age, badge, dpe_badge, kpi, scorer_action,
+    widget_configuration_sidebar,
 )
 from stream_estate import (
     get_tendance_secteur, get_biens_expires, badge_tendance,
-    _disponible as stream_disponible, widget_configuration_sidebar,
+    _disponible as stream_disponible,
 )
 
 st.markdown(CSS, unsafe_allow_html=True)

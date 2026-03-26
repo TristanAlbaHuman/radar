@@ -8,10 +8,10 @@ import pandas as pd
 import plotly.express as px
 import plotly.graph_objects as go
 from datetime import date
-from ui_utils import CSS, S, fmt_date, fmt_age, badge, kpi
+from ui_utils import CSS, S, fmt_date, fmt_age, badge, kpi, widget_configuration_sidebar
 from stream_estate import (
     get_tendance_secteur, get_biens_expires, badge_tendance,
-    _disponible as stream_disponible, widget_configuration_sidebar,
+    _disponible as stream_disponible,
 )
 
 st.markdown(CSS, unsafe_allow_html=True)

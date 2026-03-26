@@ -9,12 +9,12 @@ from datetime import date
 from ui_utils import (
     CSS, S, fmt_date, fmt_age, badge, dpe_badge, kpi,
     generer_script, generer_objet_email, generer_sms,
-    scorer_action, map_links,
+    scorer_action, map_links, widget_configuration_sidebar,
 )
 from stream_estate import (
     section_marche_fiche, section_signal_expire, section_comparables,
     get_points_interet, _disponible as stream_disponible,
-    script_biens_expires, widget_configuration_sidebar,
+    script_biens_expires,
 )
 
 st.markdown(CSS, unsafe_allow_html=True)
