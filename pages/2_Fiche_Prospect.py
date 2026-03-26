@@ -14,7 +14,7 @@ from ui_utils import (
 from stream_estate import (
     section_marche_fiche, section_signal_expire, section_comparables,
     get_points_interet, _disponible as stream_disponible,
-    script_biens_expires,
+    script_biens_expires, widget_configuration_sidebar,
 )
 
 st.markdown(CSS, unsafe_allow_html=True)
@@ -51,6 +51,7 @@ with st.sidebar:
                               index=0 if not fiche_id else None)
     if sel_label:
         fiche_id = str(options_dict[sel_label])
+    widget_configuration_sidebar()
 
 # ── Charger le dossier ────────────────────────────────────────────
 df_src = df_eval if src == "eval" else df_mand
@@ -145,14 +146,16 @@ with c2:
         )
 
     # ── Stream Estate : prix marché ──────────────────────────────
+    cp_row = str(row.get("code_postal","") or "")
+    tb_row = str(row.get("type_bien","") or "maison")
     if stream_disponible():
-        cp_row = str(row.get("code_postal","") or "")
-        tb_row = str(row.get("type_bien","") or "maison")
         marche_html = section_marche_fiche(cp_row, tb_row)
         if marche_html:
             st.markdown(marche_html, unsafe_allow_html=True)
+        else:
+            st.caption("Données marché non disponibles pour ce CP.")
     else:
-        st.caption("Configurez STREAM_ESTATE_API_KEY pour les données marché.")
+        st.caption("🔑 Saisissez votre clé Stream Estate dans la sidebar pour voir les prix du marché.")
 
 with c3:
     st.markdown('<div class="sec">Historique</div>', unsafe_allow_html=True)
@@ -179,11 +182,13 @@ with c3:
             st.markdown(badge("Aucun suivi enregistré", "red"), unsafe_allow_html=True)
 
 # ── Stream Estate : signal biens expirés + comparables ──────────
+cp_row  = str(row.get("code_postal","") or "")
+tb_row  = str(row.get("type_bien","") or "maison")
 if stream_disponible():
-    cp_row  = str(row.get("code_postal","") or "")
-    tb_row  = str(row.get("type_bien","") or "maison")
     badge_exp, angle_exp = section_signal_expire(cp_row, tb_row)
     comp_html = section_comparables(cp_row, tb_row)
+else:
+    badge_exp, angle_exp, comp_html = "", "", ""
 
     if badge_exp or comp_html:
         st.markdown('<div class="sec">Données marché — Stream Estate</div>', unsafe_allow_html=True)

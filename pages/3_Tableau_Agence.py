@@ -11,7 +11,7 @@ from datetime import date
 from ui_utils import CSS, S, fmt_date, fmt_age, badge, kpi
 from stream_estate import (
     get_tendance_secteur, get_biens_expires, badge_tendance,
-    _disponible as stream_disponible,
+    _disponible as stream_disponible, widget_configuration_sidebar,
 )
 
 st.markdown(CSS, unsafe_allow_html=True)
@@ -110,6 +110,16 @@ st.markdown(f"""
 """, unsafe_allow_html=True)
 
 # ── Stream Estate : tendance marché agence ───────────────────────
+if not stream_disponible():
+    st.markdown(
+        '<div style="background:#fef0e0;border:1px solid #fad4a8;border-radius:8px;'
+        'padding:12px 16px;font-size:12px;color:#b7600d;">'
+        '🔑 <b>Données marché Stream Estate non disponibles</b> — '
+        'Saisissez votre clé API dans la sidebar pour voir les prix du marché, '
+        'la tendance et les biens expirés sur votre secteur.'
+        '</div>',
+        unsafe_allow_html=True,
+    )
 if stream_disponible():
     # Récupérer les CP de l'agence et les types de biens dominants
     cp_agence   = df_e["code_postal"].dropna().mode()

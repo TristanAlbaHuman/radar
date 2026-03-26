@@ -12,7 +12,7 @@ from ui_utils import (
 )
 from stream_estate import (
     get_tendance_secteur, get_biens_expires, badge_tendance,
-    _disponible as stream_disponible,
+    _disponible as stream_disponible, widget_configuration_sidebar,
 )
 
 st.markdown(CSS, unsafe_allow_html=True)
@@ -42,6 +42,7 @@ with st.sidebar:
     show_dpe     = st.checkbox("Signaux DPE", True)
     st.markdown("---")
     st.info("💡 Cliquez sur **Voir la fiche** pour accéder au script d'appel complet.")
+    widget_configuration_sidebar()
 
 # ── Filtres ───────────────────────────────────────────────────────
 if agence_sel != "Toutes":
