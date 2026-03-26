@@ -6,6 +6,7 @@ Utilitaires partagés : CSS, helpers, générateur de scripts, logique d'action.
 import re
 import pandas as pd
 import html as _html
+import streamlit as st
 from datetime import date
 
 # ─────────────────────────────────────────────
