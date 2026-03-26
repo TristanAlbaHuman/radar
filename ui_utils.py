@@ -325,3 +325,54 @@ def scorer_action(row, source="eval"):
 def determiner_profil(row, source="eval"):
     _, profil, couleur, icone, action = scorer_action(row, source)
     return profil, couleur, icone, action
+
+
+# ─────────────────────────────────────────────
+# WIDGET STREAM ESTATE (sidebar)
+# ─────────────────────────────────────────────
+
+def widget_configuration_sidebar():
+    """
+    Widget sidebar pour configurer la clé API Stream Estate.
+    Affiche un badge vert si connecté, un champ de saisie sinon.
+    Importer depuis ui_utils pour éviter la dépendance circulaire.
+    """
+    import os
+    st.markdown("---")
+    st.markdown("### 📡 Stream Estate")
+    # Lire la clé depuis session_state, secrets ou env
+    key = ""
+    try:
+        key = st.session_state.get("stream_api_key", "").strip()
+    except Exception:
+        pass
+    if not key:
+        try:
+            key = st.secrets.get("STREAM_ESTATE_API_KEY", "")
+        except Exception:
+            pass
+    if not key:
+        key = os.environ.get("STREAM_ESTATE_API_KEY", "")
+
+    if key:
+        st.markdown(
+            '<span style="background:#eafaf1;color:#1e8449;padding:3px 10px;'
+            'border-radius:4px;font-size:11px;font-weight:700">✅ API connectée</span>',
+            unsafe_allow_html=True,
+        )
+    else:
+        st.markdown(
+            '<span style="background:#fef0e0;color:#b7600d;padding:3px 10px;'
+            'border-radius:4px;font-size:11px;font-weight:700">⚠️ Clé API requise</span>',
+            unsafe_allow_html=True,
+        )
+        key_input = st.text_input(
+            "Clé API Stream Estate",
+            type="password",
+            key="stream_api_key_input",
+            placeholder="Votre clé X-API-KEY",
+            help="Obtenez votre clé sur stream.estate",
+        )
+        if key_input:
+            st.session_state["stream_api_key"] = key_input
+            st.rerun()
