@@ -39,16 +39,15 @@ CLASSEMENT_MANDAT_MAP = {
 # NORMALISATION — FONCTIONS ATOMIQUES
 # ─────────────────────────────────────────────
 
-def _get_col(df: pd.DataFrame, possible_names: list) -> pd.Series:
+def get_col(df: pd.DataFrame, possible_names: list, default_val=None) -> pd.Series:
     """
-    Fonction anti-plantage : cherche une colonne parmi plusieurs noms possibles.
-    Évite les KeyError quand le CRM renomme ses colonnes d'un export à l'autre.
+    Fonction bouclier : cherche une colonne parmi plusieurs noms possibles.
+    Évite les KeyError fatals si le CRM modifie l'intitulé d'une colonne.
     """
     for col in possible_names:
         if col in df.columns:
             return df[col]
-    # Si aucune colonne n'est trouvée, retourne une série vide au lieu de planter
-    return pd.Series([None] * len(df))
+    return pd.Series([default_val] * len(df))
 
 
 def normaliser_telephone(valeur) -> str | None:
@@ -121,50 +120,47 @@ def nettoyer_evaluations(df: pd.DataFrame) -> pd.DataFrame:
     out = pd.DataFrame()
     out["source"] = "evaluation"
     
-    # Identifiants (avec protection multi-noms)
-    out["id_evaluation"] = df["NEstimation"].astype(str)
-    out["id_agence"] = _get_col(df, ["NAg", "Id Agence", "ID_Agence"]).fillna("").astype(str)
-    out["agence"] = _get_col(df, ["txtAgence", "Nom Agence", "Agence"]).fillna("").astype(str).str.strip()
-    out["actif"] = _get_col(df, ["Actif", "ACTIF"]).fillna(0).astype(int) == 1
+    # Identifiants
+    out["id_evaluation"] = get_col(df, ["NEstimation"]).astype(str)
+    out["id_agence"] = get_col(df, ["NAg", "Id Agence"]).fillna("").astype(str)
+    out["agence"] = get_col(df, ["txtAgence", "Nom Agence"]).fillna("").astype(str).str.strip()
+    out["actif"] = get_col(df, ["Actif"]).fillna(0).astype(int) == 1
 
     # Dossier & Bien
-    out["nom_dossier"] = df["NomDossierEstimation"].str.strip()
-    out["nom_principal"] = df["NomDossierEstimation"].apply(normaliser_nom_principal)
+    out["nom_dossier"] = get_col(df, ["NomDossierEstimation"]).fillna("").astype(str).str.strip()
+    out["nom_principal"] = out["nom_dossier"].apply(normaliser_nom_principal)
     
-    type_bien_brut = _get_col(df, ["TypeBien", "Type de bien", "txtTypeBien"])
+    type_bien_brut = get_col(df, ["TypeBien", "Type de bien"])
     out["type_bien"] = type_bien_brut.map(TYPE_BIEN_MAP).fillna("autre")
 
     # Adresse
-    out["adresse_bien_brute"] = df["BienAdresse_Adresse"]
-    out["adresse_bien"] = df["BienAdresse_Adresse"].apply(normaliser_adresse_bien)
-    cp_ville = df["BienAdresse_Adresse"].apply(
+    out["adresse_bien_brute"] = get_col(df, ["BienAdresse_Adresse"])
+    out["adresse_bien"] = out["adresse_bien_brute"].apply(normaliser_adresse_bien)
+    cp_ville = out["adresse_bien_brute"].apply(
         lambda x: pd.Series(extraire_cp_ville(x), index=["cp", "ville"])
     )
     out["code_postal"] = cp_ville["cp"]
     out["ville"] = cp_ville["ville"]
 
     # Dates
-    out["date_estimation"] = pd.to_datetime(df["DateSaisie"], errors="coerce")
-    out["date_dernier_suivi"] = pd.to_datetime(df["DateDernierSuivi"], errors="coerce", dayfirst=True)
+    out["date_estimation"] = pd.to_datetime(get_col(df, ["DateSaisie"]), errors="coerce")
+    out["date_dernier_suivi"] = pd.to_datetime(get_col(df, ["DateDernierSuivi"]), errors="coerce", dayfirst=True)
     out["sans_suivi"] = out["date_dernier_suivi"].isna()
 
     today = pd.Timestamp(date.today())
     out["age_estimation_jours"] = (today - out["date_estimation"]).dt.days
 
     # Contacts
-    out["client1_nom"] = df["Client1"].str.strip() if "Client1" in df.columns else None
-    out["client1_email"] = df["Client1_email"].apply(normaliser_email) if "Client1_email" in df.columns else None
-    out["client1_tel"] = df["Client1_Tel1"].apply(normaliser_telephone) if "Client1_Tel1" in df.columns else None
-    out["client1_tel2"] = df["Client1_Tel2"].apply(normaliser_telephone) if "Client1_Tel2" in df.columns else None
+    out["client1_nom"] = get_col(df, ["Client1"]).astype(str).str.strip()
+    out["client1_email"] = get_col(df, ["Client1_email"]).apply(normaliser_email)
+    out["client1_tel"] = get_col(df, ["Client1_Tel1"]).apply(normaliser_telephone)
+    out["client1_tel2"] = get_col(df, ["Client1_Tel2"]).apply(normaliser_telephone)
 
-    out["client2_nom"] = df["Client2"].str.strip() if "Client2" in df.columns else None
-    out["client2_email"] = df["Client2_email"].apply(normaliser_email) if "Client2_email" in df.columns else None
-    out["client2_tel"] = df["Client2_Tel1"].apply(normaliser_telephone) if "Client2_Tel1" in df.columns else None
+    out["client2_nom"] = get_col(df, ["Client2"]).astype(str).str.strip()
+    out["client2_email"] = get_col(df, ["Client2_email"]).apply(normaliser_email)
+    out["client2_tel"] = get_col(df, ["Client2_Tel1"]).apply(normaliser_telephone)
 
-    if "client1_tel2" in out.columns:
-        out["tel_jointure"] = out["client1_tel"].combine_first(out["client1_tel2"].combine_first(out["client2_tel"]))
-    else:
-        out["tel_jointure"] = out["client1_tel"].combine_first(out["client2_tel"])
+    out["tel_jointure"] = out["client1_tel"].combine_first(out["client1_tel2"].combine_first(out["client2_tel"]))
 
     out["a_telephone"] = out["tel_jointure"].notna()
     out["a_email"] = out["client1_email"].notna()
@@ -178,38 +174,40 @@ def nettoyer_mandats(df: pd.DataFrame) -> pd.DataFrame:
     out = pd.DataFrame()
     out["source"] = "mandat"
     
-    out["id_mandat"] = df["NVendeur"].astype(str)
-    out["id_agence"] = _get_col(df, ["NAg", "Id Agence", "ID_Agence"]).fillna("").astype(str)
-    out["agence"] = _get_col(df, ["txtAgence", "Nom Agence", "Agence"]).fillna("").astype(str).str.strip()
-    out["actif"] = _get_col(df, ["Actif", "ACTIF"]).fillna(0).astype(bool)
+    out["id_mandat"] = get_col(df, ["NVendeur"]).astype(str)
+    out["id_agence"] = get_col(df, ["NAg", "Id Agence"]).fillna("").astype(str)
+    out["agence"] = get_col(df, ["txtAgence", "Nom Agence"]).fillna("").astype(str).str.strip()
+    out["actif"] = get_col(df, ["Actif"]).fillna(0).astype(bool)
 
-    out["nom_dossier"] = df["NomDossierVendeur"].str.strip()
-    out["nom_principal"] = df["NomDossierVendeur"].apply(normaliser_nom_principal)
+    out["nom_dossier"] = get_col(df, ["NomDossierVendeur"]).fillna("").astype(str).str.strip()
+    out["nom_principal"] = out["nom_dossier"].apply(normaliser_nom_principal)
 
-    type_bien_brut = _get_col(df, ["txtTypeBien", "Type de bien", "TypeBien"])
+    type_bien_brut = get_col(df, ["txtTypeBien", "Type de bien"])
     out["type_bien"] = type_bien_brut.map(TYPE_BIEN_MAP).fillna("autre")
     
-    out["classement"] = df["Classement_Resultat"].map(CLASSEMENT_MANDAT_MAP)
-    out["classement_code"] = df["Classement_Resultat"]
+    classement_code = get_col(df, ["Classement_Resultat"])
+    out["classement"] = classement_code.map(CLASSEMENT_MANDAT_MAP)
+    out["classement_code"] = classement_code
 
-    out["adresse_bien"] = df["BienAdresse_Adresse"].apply(normaliser_adresse_bien)
-    cp_ville = df["BienAdresse_Adresse"].apply(
+    out["adresse_bien_brute"] = get_col(df, ["BienAdresse_Adresse"])
+    out["adresse_bien"] = out["adresse_bien_brute"].apply(normaliser_adresse_bien)
+    cp_ville = out["adresse_bien_brute"].apply(
         lambda x: pd.Series(extraire_cp_ville(x), index=["cp", "ville"])
     )
     out["code_postal"] = cp_ville["cp"]
     out["ville"] = cp_ville["ville"]
 
-    out["date_mandat"] = pd.to_datetime(df["DateSaisie"], errors="coerce")
-    out["date_dernier_suivi"] = pd.to_datetime(df["DateDernierSuivi"], errors="coerce", dayfirst=True)
+    out["date_mandat"] = pd.to_datetime(get_col(df, ["DateSaisie"]), errors="coerce")
+    out["date_dernier_suivi"] = pd.to_datetime(get_col(df, ["DateDernierSuivi"]), errors="coerce", dayfirst=True)
     out["sans_suivi"] = out["date_dernier_suivi"].isna()
 
     today = pd.Timestamp(date.today())
     out["age_mandat_jours"] = (today - out["date_mandat"]).dt.days
 
-    out["client1_nom"] = df["Client1"].str.strip() if "Client1" in df.columns else None
-    out["client1_email"] = df["Client1_email"].apply(normaliser_email) if "Client1_email" in df.columns else None
-    out["client1_tel"] = df["Client1_Tel1"].apply(normaliser_telephone) if "Client1_Tel1" in df.columns else None
-    out["client2_tel"] = df["Client2_Tel1"].apply(normaliser_telephone) if "Client2_Tel1" in df.columns else None
+    out["client1_nom"] = get_col(df, ["Client1"]).astype(str).str.strip()
+    out["client1_email"] = get_col(df, ["Client1_email"]).apply(normaliser_email)
+    out["client1_tel"] = get_col(df, ["Client1_Tel1"]).apply(normaliser_telephone)
+    out["client2_tel"] = get_col(df, ["Client2_Tel1"]).apply(normaliser_telephone)
 
     out["tel_jointure"] = out["client1_tel"].combine_first(out["client2_tel"])
     out["a_telephone"] = out["tel_jointure"].notna()
@@ -224,34 +222,36 @@ def nettoyer_mandats_sans_suivi(df: pd.DataFrame) -> pd.DataFrame:
     out = pd.DataFrame()
     out["source"] = "mandat_sans_suivi"
     
-    out["id_mandat"] = df["NVendeur"].astype(str)
-    out["id_agence"] = _get_col(df, ["NAg", "Id Agence", "ID_Agence"]).fillna("").astype(str)
-    out["agence"] = _get_col(df, ["txtAgence", "Nom Agence", "Agence"]).fillna("").astype(str).str.strip()
-    out["actif"] = _get_col(df, ["Actif", "ACTIF"]).fillna(0).astype(int) == 1
+    out["id_mandat"] = get_col(df, ["NVendeur"]).astype(str)
+    out["id_agence"] = get_col(df, ["NAg", "Id Agence"]).fillna("").astype(str)
+    out["agence"] = get_col(df, ["txtAgence", "Nom Agence"]).fillna("").astype(str).str.strip()
+    out["actif"] = get_col(df, ["Actif"]).fillna(0).astype(int) == 1
 
-    out["nom_dossier"] = df["NomDossierVendeur"].str.strip()
-    out["nom_principal"] = df["NomDossierVendeur"].apply(normaliser_nom_principal)
+    out["nom_dossier"] = get_col(df, ["NomDossierVendeur"]).fillna("").astype(str).str.strip()
+    out["nom_principal"] = out["nom_dossier"].apply(normaliser_nom_principal)
 
-    type_bien_brut = _get_col(df, ["txtTypeBien", "Type de bien", "TypeBien"])
+    type_bien_brut = get_col(df, ["txtTypeBien", "Type de bien"])
     out["type_bien"] = type_bien_brut.map(TYPE_BIEN_MAP).fillna("autre")
     
-    out["classement_code"] = df["Classement_Resultat"]
-    out["classement"] = df["Classement_Resultat"].map(CLASSEMENT_MANDAT_MAP)
+    classement_code = get_col(df, ["Classement_Resultat"])
+    out["classement_code"] = classement_code
+    out["classement"] = classement_code.map(CLASSEMENT_MANDAT_MAP)
 
-    out["adresse_bien"] = df["BienAdresse_Adresse"].apply(normaliser_adresse_bien)
-    cp_ville = df["BienAdresse_Adresse"].apply(
+    out["adresse_bien_brute"] = get_col(df, ["BienAdresse_Adresse"])
+    out["adresse_bien"] = out["adresse_bien_brute"].apply(normaliser_adresse_bien)
+    cp_ville = out["adresse_bien_brute"].apply(
         lambda x: pd.Series(extraire_cp_ville(x), index=["cp", "ville"])
     )
     out["code_postal"] = cp_ville["cp"]
     out["ville"] = cp_ville["ville"]
 
-    out["date_mandat"] = pd.to_datetime(df["DateSaisie"], errors="coerce")
+    out["date_mandat"] = pd.to_datetime(get_col(df, ["DateSaisie"]), errors="coerce")
     today = pd.Timestamp(date.today())
     out["age_mandat_jours"] = (today - out["date_mandat"]).dt.days
     out["sans_suivi"] = True
 
-    # Récupération sécurisée des jours sans suivi
-    col_jours = _get_col(df, ["AGE MANDATS", "AGE MANDAT"])
+    # Récupération sécurisée des jours sans suivi (le vrai problème d'origine)
+    col_jours = get_col(df, ["AGE MANDATS", "AGE MANDAT"])
     out["jours_sans_suivi"] = pd.to_numeric(col_jours, errors="coerce").fillna(0).astype(int)
 
     def calculer_segment_sans_suivi(jours):
@@ -261,16 +261,16 @@ def nettoyer_mandats_sans_suivi(df: pd.DataFrame) -> pd.DataFrame:
         if jours <= 540: return "366-540j"
         return "+541j"
 
+    # La fameuse typologie recréée proprement !
     out["segment_sans_suivi"] = out["jours_sans_suivi"].apply(calculer_segment_sans_suivi)
     
-    # Actions à prévoir sécurisé
-    out["action_recommandee_brute"] = _get_col(df, ["Actions à prévoir", "Action"]).fillna("").astype(str).str.strip()
+    out["action_recommandee_brute"] = get_col(df, ["Actions à prévoir"]).fillna("").astype(str).str.strip()
 
     # Contacts
-    out["client1_nom"] = df["Client1"].str.strip() if "Client1" in df.columns else None
-    out["client1_email"] = df["Client1_email"].apply(normaliser_email) if "Client1_email" in df.columns else None
-    out["client1_tel"] = df["Client1_Tel1"].apply(normaliser_telephone) if "Client1_Tel1" in df.columns else None
-    out["client2_tel"] = df["Client2_Tel1"].apply(normaliser_telephone) if "Client2_Tel1" in df.columns else None
+    out["client1_nom"] = get_col(df, ["Client1"]).astype(str).str.strip()
+    out["client1_email"] = get_col(df, ["Client1_email"]).apply(normaliser_email)
+    out["client1_tel"] = get_col(df, ["Client1_Tel1"]).apply(normaliser_telephone)
+    out["client2_tel"] = get_col(df, ["Client2_Tel1"]).apply(normaliser_telephone)
 
     out["tel_jointure"] = out["client1_tel"].combine_first(out["client2_tel"])
     out["a_telephone"] = out["tel_jointure"].notna()
